@@ -40,8 +40,39 @@ except ImportError:  # pragma: no cover - dependency is optional at import time
 REPORT_ID_RE = re.compile(r"^[0-9a-f]{64}$")
 WEB_DIR = config.BASE_DIR / "public"
 
-# Global cache for public key (for Vercel's ephemeral filesystem)
-_PUBLIC_KEY_CACHE = None
+# Global cache for keys (for Vercel's ephemeral filesystem)
+_CACHED_PUBLIC_KEY = None
+_CACHED_PRIVATE_KEY_PATH = None
+
+
+def initialize_keys():
+    """Initialize and cache RSA keys."""
+    global _CACHED_PUBLIC_KEY, _CACHED_PRIVATE_KEY_PATH
+    
+    private_key_path = Path(config.SERVER_PRIVATE_KEY_PATH)
+    public_key_path = Path(config.SERVER_PUBLIC_KEY_PATH)
+    
+    # Create parent directories
+    private_key_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Handle environment variable-based keys (for Vercel)
+    if config.SERVER_PRIVATE_KEY_CONTENT and config.SERVER_PUBLIC_KEY_CONTENT:
+        # Write keys to disk
+        private_key_path.write_bytes(config.SERVER_PRIVATE_KEY_CONTENT)
+        public_key_path.write_bytes(config.SERVER_PUBLIC_KEY_CONTENT)
+        # Cache public key in memory
+        _CACHED_PUBLIC_KEY = config.SERVER_PUBLIC_KEY_CONTENT.decode("utf-8")
+        _CACHED_PRIVATE_KEY_PATH = private_key_path
+        logging.info("Keys loaded from environment variables")
+    else:
+        # Generate keys if they don't exist
+        ensure_key_pair(private_key_path, public_key_path)
+        _CACHED_PRIVATE_KEY_PATH = private_key_path
+        if public_key_path.exists():
+            _CACHED_PUBLIC_KEY = public_key_path.read_text(encoding="utf-8")
+        logging.info("Keys generated from ensure_key_pair")
+    
+    return private_key_path, public_key_path
 
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
@@ -60,21 +91,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     if test_config:
         app.config.update(test_config)
 
-    private_key_path = Path(app.config["SERVER_PRIVATE_KEY_PATH"])
-    public_key_path = Path(app.config["SERVER_PUBLIC_KEY_PATH"])
-    
-    # Handle environment variable-based keys (for Vercel)
-    if config.SERVER_PRIVATE_KEY_CONTENT and config.SERVER_PUBLIC_KEY_CONTENT:
-        private_key_path.parent.mkdir(parents=True, exist_ok=True)
-        private_pem = base64.b64decode(config.SERVER_PRIVATE_KEY_CONTENT)
-        public_pem = base64.b64decode(config.SERVER_PUBLIC_KEY_CONTENT)
-        private_key_path.write_bytes(private_pem)
-        public_key_path.write_bytes(public_pem)
-        # Cache the public key in memory
-        global _PUBLIC_KEY_CACHE
-        _PUBLIC_KEY_CACHE = public_pem.decode("utf-8")
-    else:
-        ensure_key_pair(private_key_path, public_key_path)
+    try:
+        private_key_path, public_key_path = initialize_keys()
+    except Exception as e:
+        logging.error(f"Failed to initialize keys: {e}")
+        raise
 
     store = ReportStore(app.config["DATABASE_PATH"])
     store.initialize()
@@ -111,21 +132,26 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.get("/api/v1/public-key")
     def public_key():
-        global _PUBLIC_KEY_CACHE
+        global _CACHED_PUBLIC_KEY
         try:
             # Use cached key first (for Vercel ephemeral storage)
-            if _PUBLIC_KEY_CACHE:
-                return jsonify({"public_key_pem": _PUBLIC_KEY_CACHE})
+            if _CACHED_PUBLIC_KEY:
+                return jsonify({"public_key_pem": _CACHED_PUBLIC_KEY})
             
             if not public_key_path.exists():
-                return jsonify({"error": "Public key not found. Environment variables may not be set."}), 500
+                msg = "Public key not found. Make sure environment variables are set."
+                logging.error(msg)
+                return jsonify({"error": msg}), 500
+            
             key_content = public_key_path.read_text(encoding="utf-8")
             if not key_content:
-                return jsonify({"error": "Public key is empty."}), 500
-            _PUBLIC_KEY_CACHE = key_content
+                logging.error("Public key file is empty")
+                return jsonify({"error": "Public key is empty"}), 500
+            
+            _CACHED_PUBLIC_KEY = key_content
             return jsonify({"public_key_pem": key_content})
         except Exception as e:
-            logging.error(f"Error loading public key: {e}")
+            logging.error(f"Error loading public key: {e}", exc_info=True)
             return jsonify({"error": f"Failed to load public key: {str(e)}"}), 500
 
     @app.post("/api/v1/submit")

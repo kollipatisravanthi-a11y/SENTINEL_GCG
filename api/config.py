@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import os
 import tempfile
 from pathlib import Path
@@ -23,8 +24,15 @@ SERVER_PUBLIC_KEY_PATH = Path(
 )
 
 # Environment variables for key content (base64 encoded)
-SERVER_PRIVATE_KEY_CONTENT = os.getenv("SENTINEL_PRIVATE_KEY_CONTENT")
-SERVER_PUBLIC_KEY_CONTENT = os.getenv("SENTINEL_PUBLIC_KEY_CONTENT")
+_private_key_b64 = os.getenv("SENTINEL_PRIVATE_KEY_CONTENT", "")
+_public_key_b64 = os.getenv("SENTINEL_PUBLIC_KEY_CONTENT", "")
+
+SERVER_PRIVATE_KEY_CONTENT = (
+    base64.b64decode(_private_key_b64) if _private_key_b64 else None
+)
+SERVER_PUBLIC_KEY_CONTENT = (
+    base64.b64decode(_public_key_b64) if _public_key_b64 else None
+)
 
 NODE_ID = os.getenv("SENTINEL_NODE_ID", "storage_primary")
 ENTRY_NODE = os.getenv("SENTINEL_ENTRY_NODE", "entry_gateway")
