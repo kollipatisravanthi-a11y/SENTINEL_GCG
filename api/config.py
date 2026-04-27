@@ -3,19 +3,28 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from pathlib import Path
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+# For Vercel serverless, use /tmp for temporary file storage
+DATA_DIR = Path(tempfile.gettempdir()) / "sentinel_data"
+DATA_DIR.mkdir(exist_ok=True)
+
 DATABASE_PATH = Path(os.getenv("SENTINEL_DB", DATA_DIR / "sentinel.db"))
 
+# Support both file paths and environment variables for keys
 SERVER_PRIVATE_KEY_PATH = Path(
     os.getenv("SENTINEL_PRIVATE_KEY", DATA_DIR / "server_private_key.pem")
 )
 SERVER_PUBLIC_KEY_PATH = Path(
     os.getenv("SENTINEL_PUBLIC_KEY", DATA_DIR / "server_public_key.pem")
 )
+
+# Environment variables for key content (base64 encoded)
+SERVER_PRIVATE_KEY_CONTENT = os.getenv("SENTINEL_PRIVATE_KEY_CONTENT")
+SERVER_PUBLIC_KEY_CONTENT = os.getenv("SENTINEL_PUBLIC_KEY_CONTENT")
 
 NODE_ID = os.getenv("SENTINEL_NODE_ID", "storage_primary")
 ENTRY_NODE = os.getenv("SENTINEL_ENTRY_NODE", "entry_gateway")

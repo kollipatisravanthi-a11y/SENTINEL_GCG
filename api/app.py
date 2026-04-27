@@ -19,15 +19,15 @@ from flask import Flask, jsonify, request, send_from_directory
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from server import config
-from server.audit.verifier import verify_report
-from server.crypto.aes_engine import decrypt_payload
-from server.crypto.envelope import assemble_blob, parse_blob
-from server.crypto.hmac_engine import compute_hmac
-from server.crypto.rsa_engine import ensure_key_pair, load_private_key, unwrap_key
-from server.routing.graph import select_storage_route
-from server.storage.db import ReportStore
-from server.storage.merkle import merkle_root
+from api import config
+from api.audit.verifier import verify_report
+from api.crypto.aes_engine import decrypt_payload
+from api.crypto.envelope import assemble_blob, parse_blob
+from api.crypto.hmac_engine import compute_hmac
+from api.crypto.rsa_engine import ensure_key_pair, load_private_key, unwrap_key
+from api.routing.graph import select_storage_route
+from api.storage.db import ReportStore
+from api.storage.merkle import merkle_root
 
 try:
     from flask_limiter import Limiter
@@ -38,7 +38,7 @@ except ImportError:  # pragma: no cover - dependency is optional at import time
 
 
 REPORT_ID_RE = re.compile(r"^[0-9a-f]{64}$")
-WEB_DIR = config.BASE_DIR / "client" / "web"
+WEB_DIR = config.BASE_DIR / "public"
 
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
@@ -59,7 +59,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     private_key_path = Path(app.config["SERVER_PRIVATE_KEY_PATH"])
     public_key_path = Path(app.config["SERVER_PUBLIC_KEY_PATH"])
-    ensure_key_pair(private_key_path, public_key_path)
+    
+    # Handle environment variable-based keys (for Vercel)
+    if config.SERVER_PRIVATE_KEY_CONTENT and config.SERVER_PUBLIC_KEY_CONTENT:
+        private_key_path.parent.mkdir(parents=True, exist_ok=True)
+        private_key_path.write_bytes(
+            base64.b64decode(config.SERVER_PRIVATE_KEY_CONTENT)
+        )
+        public_key_path.write_bytes(
+            base64.b64decode(config.SERVER_PUBLIC_KEY_CONTENT)
+        )
+    else:
+        ensure_key_pair(private_key_path, public_key_path)
 
     store = ReportStore(app.config["DATABASE_PATH"])
     store.initialize()
