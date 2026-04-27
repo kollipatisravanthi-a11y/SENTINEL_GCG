@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from api.crypto.hmac_engine import compute_hmac, verify_hmac
-from api.storage.db import ReportRecord
-from api.storage.merkle import generate_proof, hash_leaf, merkle_root, verify_proof
+from ..crypto.hmac_engine import compute_hmac, verify_hmac
+from ..storage.db import ReportRecord
+from ..storage.merkle import generate_proof, hash_leaf, merkle_root, verify_proof
 
 
 @dataclass(frozen=True)

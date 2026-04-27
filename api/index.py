@@ -9,7 +9,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    from api.app import create_app
+    # Use relative import from the app module
+    from .app import create_app
     
     logger.info("Creating SENTINEL Flask app for Vercel...")
     app = create_app()
