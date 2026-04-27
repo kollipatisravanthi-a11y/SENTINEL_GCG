@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SENTINEL Admin | BitMaster</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f8fb;
+        --panel: #ffffff;
+        --ink: #17202a;
+        --muted: #5c6b7a;
+        --line: #d9e1ea;
+        --accent: #0f766e;
+        --accent-strong: #115e59;
+        --bad: #991b1b;
+        --good: #166534;
+        --warn: #9a3412;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.5;
+      }
+
+      header {
+        border-bottom: 1px solid var(--line);
+        background: #ffffff;
+      }
+
+      .bar,
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+
+      .bar {
+        min-height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .brand {
+        font-size: 1.1rem;
+        font-weight: 750;
+        letter-spacing: 0;
+      }
+
+      nav {
+        display: flex;
+        gap: 8px;
+      }
+
+      nav a {
+        color: var(--muted);
+        text-decoration: none;
+        padding: 8px 10px;
+        border-radius: 6px;
+      }
+
+      nav a[aria-current="page"],
+      nav a:hover {
+        background: #edf7f6;
+        color: var(--accent-strong);
+      }
+
+      main {
+        display: grid;
+        gap: 20px;
+        padding: 28px 0 40px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 20px;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: minmax(360px, 0.95fr) minmax(0, 1.2fr);
+        gap: 20px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+        line-height: 1.15;
+      }
+
+      h2 {
+        font-size: 1rem;
+        margin-bottom: 14px;
+      }
+
+      h3 {
+        font-size: 0.95rem;
+        margin: 18px 0 8px;
+      }
+
+      .subhead {
+        margin: 8px 0 22px;
+        color: var(--muted);
+      }
+
+      .auth-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 10px;
+        align-items: end;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        font-weight: 650;
+      }
+
+      input {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 10px 12px;
+        color: var(--ink);
+        background: #ffffff;
+        font: inherit;
+      }
+
+      input:focus {
+        outline: 3px solid #b9e6e0;
+        border-color: var(--accent);
+      }
+
+      button {
+        border: 0;
+        border-radius: 6px;
+        background: var(--accent);
+        color: #ffffff;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 700;
+        min-height: 42px;
+        padding: 10px 14px;
+      }
+
+      button:hover {
+        background: var(--accent-strong);
+      }
+
+      button.secondary {
+        background: #e8eef5;
+        color: var(--ink);
+      }
+
+      button.secondary:hover {
+        background: #d9e3ee;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
+
+      .status-line {
+        min-height: 24px;
+        color: var(--muted);
+        margin-top: 12px;
+      }
+
+      .status-line.error {
+        color: var(--bad);
+      }
+
+      .status-line.ok {
+        color: var(--good);
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 12px;
+        background: #f8fafc;
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 4px;
+        overflow-wrap: anywhere;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+
+      td {
+        overflow-wrap: anywhere;
+      }
+
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 0.9rem;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-size: 0.82rem;
+        font-weight: 800;
+      }
+
+      .pill.valid {
+        background: #dcfce7;
+        color: var(--good);
+      }
+
+      .pill.tampered {
+        background: #fee2e2;
+        color: var(--bad);
+      }
+
+      .empty {
+        color: var(--muted);
+        padding: 18px 0;
+      }
+
+      dl {
+        display: grid;
+        grid-template-columns: 130px minmax(0, 1fr);
+        gap: 8px 12px;
+        margin: 0;
+      }
+
+      dt {
+        color: var(--muted);
+      }
+
+      dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+
+      pre {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #f8fafc;
+        margin: 0;
+        min-height: 180px;
+        overflow: auto;
+        padding: 12px;
+        white-space: pre-wrap;
+      }
+
+      .attachment {
+        border-top: 1px solid var(--line);
+        margin-top: 14px;
+        padding-top: 14px;
+      }
+
+      .attachment-actions {
+        display: flex;
+        gap: 8px;
+        margin: 14px 0;
+      }
+
+      .attachment-preview {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #f8fafc;
+        padding: 12px;
+        margin-top: 12px;
+        max-height: 400px;
+        overflow: auto;
+      }
+
+      .attachment-preview img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+      }
+
+      .attachment-preview iframe {
+        width: 100%;
+        height: 400px;
+        border: none;
+        border-radius: 4px;
+      }
+
+      .attachment-preview pre {
+        min-height: auto;
+        max-height: 300px;
+      }
+
+      @media (max-width: 900px) {
+        .split,
+        .auth-row,
+        .summary-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .bar {
+          align-items: flex-start;
+          flex-direction: column;
+          padding: 14px 0;
+        }
+
+        dl {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="bar">
+        <div class="brand">BitMaster</div>
+        <nav aria-label="Primary">
+          <a href="/">Submit</a>
+          <a href="/verify">Verify</a>
+          <a href="/admin" aria-current="page">Admin</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel" aria-labelledby="admin-title">
+        <h1 id="admin-title">Organization review dashboard</h1>
+        <p class="subhead">Authorized reviewers can view submitted complaints without learning who submitted them.</p>
+        <div class="auth-row">
+          <label>
+            Admin token
+            <input id="admin-token" type="password" autocomplete="off">
+          </label>
+          <button id="load-button" type="button">Load reports</button>
+          <button id="clear-button" class="secondary" type="button">Clear</button>
+        </div>
+        <div id="status" class="status-line" role="status"></div>
+      </section>
+
+      <section class="summary-grid" aria-label="Admin summary">
+        <div class="metric">
+          <span>Total reports</span>
+          <strong id="report-count">0</strong>
+        </div>
+        <div class="metric">
+          <span>Valid reports</span>
+          <strong id="valid-count">0</strong>
+        </div>
+        <div class="metric">
+          <span>Merkle root</span>
+          <strong id="merkle-root" class="mono">-</strong>
+        </div>
+      </section>
+
+      <div class="split">
+        <section class="panel" aria-labelledby="reports-title">
+          <h2 id="reports-title">Submitted complaints</h2>
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Receipt</th>
+                  <th>Status</th>
+                  <th>Submitted</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="report-rows">
+                <tr><td colspan="4" class="empty">Enter the admin token and load reports.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="detail-title">
+          <h2 id="detail-title">Complaint detail</h2>
+          <dl>
+            <dt>Receipt</dt>
+            <dd id="detail-id" class="mono">-</dd>
+            <dt>Status</dt>
+            <dd id="detail-status">-</dd>
+            <dt>Merkle index</dt>
+            <dd id="detail-index">-</dd>
+            <dt>Route</dt>
+            <dd id="detail-route">-</dd>
+          </dl>
+
+          <h3>Title</h3>
+          <div id="detail-title-text">-</div>
+
+          <h3>Report body</h3>
+          <pre id="detail-body">Select a complaint to decrypt and view it.</pre>
+
+          <div id="attachment" class="attachment" hidden>
+            <h3>Attachment</h3>
+            <dl>
+              <dt>Name</dt>
+              <dd id="attachment-name">-</dd>
+              <dt>Type</dt>
+              <dd id="attachment-type">-</dd>
+              <dt>Size</dt>
+              <dd id="attachment-size">-</dd>
+              <dt>SHA-256</dt>
+              <dd id="attachment-sha" class="mono">-</dd>
+            </dl>
+            <div class="attachment-actions">
+              <button id="attachment-download" type="button">Download</button>
+              <button id="attachment-preview" type="button" class="secondary">Preview</button>
+            </div>
+            <div id="attachment-preview-area" class="attachment-preview" hidden></div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const tokenInput = document.querySelector("#admin-token");
+      const loadButton = document.querySelector("#load-button");
+      const clearButton = document.querySelector("#clear-button");
+      const statusEl = document.querySelector("#status");
+      const reportRows = document.querySelector("#report-rows");
+      const reportCountEl = document.querySelector("#report-count");
+      const validCountEl = document.querySelector("#valid-count");
+      const merkleRootEl = document.querySelector("#merkle-root");
+      const detailIdEl = document.querySelector("#detail-id");
+      const detailStatusEl = document.querySelector("#detail-status");
+      const detailIndexEl = document.querySelector("#detail-index");
+      const detailRouteEl = document.querySelector("#detail-route");
+      const detailTitleEl = document.querySelector("#detail-title-text");
+      const detailBodyEl = document.querySelector("#detail-body");
+      const attachmentEl = document.querySelector("#attachment");
+      const attachmentNameEl = document.querySelector("#attachment-name");
+      const attachmentTypeEl = document.querySelector("#attachment-type");
+      const attachmentSizeEl = document.querySelector("#attachment-size");
+      const attachmentShaEl = document.querySelector("#attachment-sha");
+      const attachmentDownloadBtn = document.querySelector("#attachment-download");
+      const attachmentPreviewBtn = document.querySelector("#attachment-preview");
+      const attachmentPreviewArea = document.querySelector("#attachment-preview-area");
+      let reports = [];
+      let currentAttachment = null;
+
+      function setStatus(message, type = "") {
+        statusEl.textContent = message;
+        statusEl.className = `status-line ${type}`.trim();
+      }
+
+      function token() {
+        return tokenInput.value.trim();
+      }
+
+      function statusPill(status) {
+        const cls = status === "VALID" ? "valid" : "tampered";
+        return `<span class="pill ${cls}">${status}</span>`;
+      }
+
+      function formatTime(unixSeconds) {
+        if (!unixSeconds) return "-";
+        return new Date(unixSeconds * 1000).toLocaleString();
+      }
+
+      function shortId(reportId) {
+        return `${reportId.slice(0, 10)}...${reportId.slice(-8)}`;
+      }
+
+      function renderRows() {
+        reportRows.innerHTML = "";
+        if (reports.length === 0) {
+          reportRows.innerHTML = "<tr><td colspan=\"4\" class=\"empty\">No complaints submitted yet.</td></tr>";
+          return;
+        }
+
+        for (const report of reports) {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td class="mono" title="${report.report_id}">${shortId(report.report_id)}</td>
+            <td>${statusPill(report.status)}</td>
+            <td>${formatTime(report.submitted_at)}</td>
+            <td><button class="secondary" type="button" data-report-id="${report.report_id}">Open</button></td>
+          `;
+          reportRows.append(row);
+        }
+      }
+
+      function renderEmptyDetail() {
+        detailIdEl.textContent = "-";
+        detailStatusEl.textContent = "-";
+        detailIndexEl.textContent = "-";
+        detailRouteEl.textContent = "-";
+        detailTitleEl.textContent = "-";
+        detailBodyEl.textContent = "Select a complaint to decrypt and view it.";
+        attachmentEl.hidden = true;
+      }
+
+      async function loadReports() {
+        if (!token()) {
+          setStatus("Enter the admin token.", "error");
+          return;
+        }
+
+        setStatus("Loading reports...");
+        loadButton.disabled = true;
+        try {
+          const response = await fetch("/api/v1/admin/reports", {
+            headers: { "X-Admin-Token": token() },
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || "Could not load reports");
+          }
+
+          reports = data.reports;
+          reportCountEl.textContent = data.report_count;
+          validCountEl.textContent = reports.filter((report) => report.status === "VALID").length;
+          merkleRootEl.textContent = data.merkle_root;
+          renderRows();
+          renderEmptyDetail();
+          setStatus("Reports loaded.", "ok");
+        } catch (error) {
+          setStatus(error.message, "error");
+        } finally {
+          loadButton.disabled = false;
+        }
+      }
+
+      async function openReport(reportId) {
+        setStatus("Decrypting complaint...");
+        try {
+          const response = await fetch("/api/v1/admin/decrypt", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Admin-Token": token(),
+            },
+            body: JSON.stringify({ report_id: reportId, include_attachment_data: true }),
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || "Could not decrypt complaint");
+          }
+
+          const report = reports.find((item) => item.report_id === reportId);
+          detailIdEl.textContent = data.report_id;
+          detailStatusEl.innerHTML = statusPill(data.integrity.status);
+          detailIndexEl.textContent = data.integrity.merkle_index;
+          detailRouteEl.textContent = report ? report.route_path : "-";
+          detailTitleEl.textContent = data.payload.title || "Untitled complaint";
+          detailBodyEl.textContent = data.payload.body || "";
+
+          const attachment = data.payload.attachment;
+          attachmentEl.hidden = !attachment;
+          attachmentPreviewArea.hidden = true;
+          if (attachment) {
+            attachmentNameEl.textContent = attachment.name || "-";
+            attachmentTypeEl.textContent = attachment.type || "-";
+            attachmentSizeEl.textContent = attachment.size ? `${attachment.size} bytes` : "-";
+            attachmentShaEl.textContent = attachment.sha256 || "-";
+            currentAttachment = attachment;
+          } else {
+            currentAttachment = null;
+          }
+
+          setStatus("Complaint opened.", "ok");
+        } catch (error) {
+          setStatus(error.message, "error");
+        }
+      }
+
+      async function openReport(reportId) {
+        setStatus("Decrypting complaint...");
+        try {
+          const response = await fetch("/api/v1/admin/decrypt", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Admin-Token": token(),
+            },
+            body: JSON.stringify({ report_id: reportId, include_attachment_data: true }),
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || "Could not decrypt complaint");
+          }
+
+          const report = reports.find((item) => item.report_id === reportId);
+          detailIdEl.textContent = data.report_id;
+          detailStatusEl.innerHTML = statusPill(data.integrity.status);
+          detailIndexEl.textContent = data.integrity.merkle_index;
+          detailRouteEl.textContent = report ? report.route_path : "-";
+          detailTitleEl.textContent = data.payload.title || "Untitled complaint";
+          detailBodyEl.textContent = data.payload.body || "";
+
+          const attachment = data.payload.attachment;
+          attachmentEl.hidden = !attachment;
+          attachmentPreviewArea.hidden = true;
+          if (attachment) {
+            attachmentNameEl.textContent = attachment.name || "-";
+            attachmentTypeEl.textContent = attachment.type || "-";
+            attachmentSizeEl.textContent = attachment.size ? `${attachment.size} bytes` : "-";
+            attachmentShaEl.textContent = attachment.sha256 || "-";
+            currentAttachment = attachment;
+          } else {
+            currentAttachment = null;
+          }
+
+          setStatus("Complaint opened.", "ok");
+        } catch (error) {
+          setStatus(error.message, "error");
+        }
+      }
+
+      function downloadAttachment() {
+        if (!currentAttachment || !currentAttachment.data_base64) {
+          setStatus("No attachment data available.", "error");
+          return;
+        }
+        try {
+          const binaryString = atob(currentAttachment.data_base64);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          const blob = new Blob([bytes], { type: currentAttachment.type || "application/octet-stream" });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = currentAttachment.name || "attachment";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          setStatus("Attachment downloaded.", "ok");
+        } catch (error) {
+          setStatus("Download failed: " + error.message, "error");
+        }
+      }
+
+      function previewAttachment() {
+        if (!currentAttachment || !currentAttachment.data_base64) {
+          setStatus("No attachment data available.", "error");
+          return;
+        }
+        try {
+          attachmentPreviewArea.innerHTML = "";
+          const type = currentAttachment.type || "application/octet-stream";
+          const binaryString = atob(currentAttachment.data_base64);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          const blob = new Blob([bytes], { type });
+          const url = URL.createObjectURL(blob);
+
+          if (type.startsWith("image/")) {
+            const img = document.createElement("img");
+            img.src = url;
+            attachmentPreviewArea.appendChild(img);
+          } else if (type === "application/pdf") {
+            const iframe = document.createElement("iframe");
+            iframe.src = url;
+            attachmentPreviewArea.appendChild(iframe);
+          } else if (type.startsWith("text/")) {
+            const pre = document.createElement("pre");
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              pre.textContent = e.target.result;
+              attachmentPreviewArea.appendChild(pre);
+            };
+            reader.readAsText(blob);
+          } else {
+            const p = document.createElement("p");
+            p.textContent = "Cannot preview this file type. Use Download to open with your default application.";
+            p.style.color = "var(--muted)";
+            attachmentPreviewArea.appendChild(p);
+          }
+          attachmentPreviewArea.hidden = false;
+          setStatus("Preview loaded.", "ok");
+        } catch (error) {
+          setStatus("Preview failed: " + error.message, "error");
+        }
+      }
+
+      loadButton.addEventListener("click", loadReports);
+      clearButton.addEventListener("click", () => {
+        tokenInput.value = "";
+        reports = [];
+        reportCountEl.textContent = "0";
+        validCountEl.textContent = "0";
+        merkleRootEl.textContent = "-";
+        renderRows();
+        renderEmptyDetail();
+        setStatus("");
+      });
+
+      reportRows.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-report-id]");
+        if (!button) return;
+        openReport(button.dataset.reportId);
+      });
+
+      attachmentDownloadBtn.addEventListener("click", downloadAttachment);
+      attachmentPreviewBtn.addEventListener("click", previewAttachment);
+
+      renderEmptyDetail();
+    </script>
+  </body>
+</html>
