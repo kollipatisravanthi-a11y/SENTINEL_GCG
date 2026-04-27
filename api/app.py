@@ -46,32 +46,27 @@ _CACHED_PRIVATE_KEY_PATH = None
 
 
 def initialize_keys():
-    """Initialize and cache RSA keys."""
+    """Initialize RSA keys - generate if they don't exist."""
     global _CACHED_PUBLIC_KEY, _CACHED_PRIVATE_KEY_PATH
     
     private_key_path = Path(config.SERVER_PRIVATE_KEY_PATH)
     public_key_path = Path(config.SERVER_PUBLIC_KEY_PATH)
     
-    # Create parent directories
+    # Ensure the directory exists
     private_key_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # Handle environment variable-based keys (for Vercel)
-    if config.SERVER_PRIVATE_KEY_CONTENT and config.SERVER_PUBLIC_KEY_CONTENT:
-        # Write keys to disk
-        private_key_path.write_bytes(config.SERVER_PRIVATE_KEY_CONTENT)
-        public_key_path.write_bytes(config.SERVER_PUBLIC_KEY_CONTENT)
-        # Cache public key in memory
-        _CACHED_PUBLIC_KEY = config.SERVER_PUBLIC_KEY_CONTENT.decode("utf-8")
-        _CACHED_PRIVATE_KEY_PATH = private_key_path
-        logging.info("Keys loaded from environment variables")
-    else:
-        # Generate keys if they don't exist
-        ensure_key_pair(private_key_path, public_key_path)
-        _CACHED_PRIVATE_KEY_PATH = private_key_path
-        if public_key_path.exists():
-            _CACHED_PUBLIC_KEY = public_key_path.read_text(encoding="utf-8")
-        logging.info("Keys generated from ensure_key_pair")
+    # Generate keys if they don't exist
+    ensure_key_pair(private_key_path, public_key_path)
     
+    # Cache public key in memory for faster access
+    if public_key_path.exists():
+        _CACHED_PUBLIC_KEY = public_key_path.read_text(encoding="utf-8")
+        logging.info("RSA keys initialized successfully")
+    else:
+        logging.error("Failed to initialize RSA keys")
+        raise RuntimeError("Could not create RSA keys")
+    
+    _CACHED_PRIVATE_KEY_PATH = private_key_path
     return private_key_path, public_key_path
 
 

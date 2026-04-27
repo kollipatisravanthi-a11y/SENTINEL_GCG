@@ -2,20 +2,27 @@
 
 from __future__ import annotations
 
-import base64
 import os
 import tempfile
 from pathlib import Path
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-# For Vercel serverless, use /tmp for temporary file storage
-DATA_DIR = Path(tempfile.gettempdir()) / "sentinel_data"
-DATA_DIR.mkdir(exist_ok=True)
+
+# For Vercel, store keys in /tmp during runtime
+# For local development, store in project data/ directory
+if os.getenv("VERCEL"):
+    # Vercel environment - use tmp directory
+    DATA_DIR = Path(tempfile.gettempdir()) / "sentinel_data"
+else:
+    # Local development - use project directory
+    DATA_DIR = BASE_DIR / "data"
+
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 DATABASE_PATH = Path(os.getenv("SENTINEL_DB", DATA_DIR / "sentinel.db"))
 
-# Support both file paths and environment variables for keys
+# RSA key paths - keys will be auto-generated if they don't exist
 SERVER_PRIVATE_KEY_PATH = Path(
     os.getenv("SENTINEL_PRIVATE_KEY", DATA_DIR / "server_private_key.pem")
 )
@@ -23,21 +30,11 @@ SERVER_PUBLIC_KEY_PATH = Path(
     os.getenv("SENTINEL_PUBLIC_KEY", DATA_DIR / "server_public_key.pem")
 )
 
-# Environment variables for key content (base64 encoded)
-_private_key_b64 = os.getenv("SENTINEL_PRIVATE_KEY_CONTENT", "")
-_public_key_b64 = os.getenv("SENTINEL_PUBLIC_KEY_CONTENT", "")
-
-SERVER_PRIVATE_KEY_CONTENT = (
-    base64.b64decode(_private_key_b64) if _private_key_b64 else None
-)
-SERVER_PUBLIC_KEY_CONTENT = (
-    base64.b64decode(_public_key_b64) if _public_key_b64 else None
-)
-
 NODE_ID = os.getenv("SENTINEL_NODE_ID", "storage_primary")
 ENTRY_NODE = os.getenv("SENTINEL_ENTRY_NODE", "entry_gateway")
 STORAGE_NODE = os.getenv("SENTINEL_STORAGE_NODE", "storage_node")
 
+# Only these two secrets are required in environment variables
 HMAC_SECRET = os.getenv(
     "SENTINEL_HMAC_SECRET",
     "dev-only-change-this-hmac-secret-before-real-use",
