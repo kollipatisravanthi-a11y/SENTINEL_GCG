@@ -19,15 +19,27 @@ from flask import Flask, jsonify, request, send_from_directory
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from . import config
-from .audit.verifier import verify_report
-from .crypto.aes_engine import decrypt_payload
-from .crypto.envelope import assemble_blob, parse_blob
-from .crypto.hmac_engine import compute_hmac
-from .crypto.rsa_engine import ensure_key_pair, load_private_key, unwrap_key
-from .routing.graph import select_storage_route
-from .storage.db import ReportStore
-from .storage.merkle import merkle_root
+# Try relative imports first, fall back to absolute
+try:
+    from . import config
+    from .audit.verifier import verify_report
+    from .crypto.aes_engine import decrypt_payload
+    from .crypto.envelope import assemble_blob, parse_blob
+    from .crypto.hmac_engine import compute_hmac
+    from .crypto.rsa_engine import ensure_key_pair, load_private_key, unwrap_key
+    from .routing.graph import select_storage_route
+    from .storage.db import ReportStore
+    from .storage.merkle import merkle_root
+except ImportError:
+    from api import config
+    from api.audit.verifier import verify_report
+    from api.crypto.aes_engine import decrypt_payload
+    from api.crypto.envelope import assemble_blob, parse_blob
+    from api.crypto.hmac_engine import compute_hmac
+    from api.crypto.rsa_engine import ensure_key_pair, load_private_key, unwrap_key
+    from api.routing.graph import select_storage_route
+    from api.storage.db import ReportStore
+    from api.storage.merkle import merkle_root
 
 try:
     from flask_limiter import Limiter
