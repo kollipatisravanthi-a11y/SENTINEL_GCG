@@ -11,14 +11,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+logger.info("Initializing SENTINEL app for Vercel...")
+
 try:
     from api.app import create_app
-    logger.info("Creating SENTINEL Flask app for Vercel...")
     app = create_app()
     logger.info("✓ SENTINEL app initialized successfully")
-except ImportError as e:
-    logger.error(f"Import error: {e}", exc_info=True)
-    raise
 except Exception as e:
     logger.error(f"Failed to initialize SENTINEL app: {e}", exc_info=True)
-    raise
+    # Create a dummy app to prevent startup errors
+    from flask import Flask, jsonify
+    app = Flask(__name__)
+    
+    @app.route('/')
+    def error():
+        return jsonify({"error": f"Failed to initialize app: {str(e)}"}), 500
+    
+    logger.info("Created error app")
