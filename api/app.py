@@ -40,6 +40,9 @@ except ImportError:  # pragma: no cover - dependency is optional at import time
 REPORT_ID_RE = re.compile(r"^[0-9a-f]{64}$")
 WEB_DIR = config.BASE_DIR / "public"
 
+# Global cache for public key (for Vercel's ephemeral filesystem)
+_PUBLIC_KEY_CACHE = None
+
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(__name__)
@@ -63,12 +66,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     # Handle environment variable-based keys (for Vercel)
     if config.SERVER_PRIVATE_KEY_CONTENT and config.SERVER_PUBLIC_KEY_CONTENT:
         private_key_path.parent.mkdir(parents=True, exist_ok=True)
-        private_key_path.write_bytes(
-            base64.b64decode(config.SERVER_PRIVATE_KEY_CONTENT)
-        )
-        public_key_path.write_bytes(
-            base64.b64decode(config.SERVER_PUBLIC_KEY_CONTENT)
-        )
+        private_pem = base64.b64decode(config.SERVER_PRIVATE_KEY_CONTENT)
+        public_pem = base64.b64decode(config.SERVER_PUBLIC_KEY_CONTENT)
+        private_key_path.write_bytes(private_pem)
+        public_key_path.write_bytes(public_pem)
+        # Cache the public key in memory
+        global _PUBLIC_KEY_CACHE
+        _PUBLIC_KEY_CACHE = public_pem.decode("utf-8")
     else:
         ensure_key_pair(private_key_path, public_key_path)
 
@@ -107,7 +111,22 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.get("/api/v1/public-key")
     def public_key():
-        return jsonify({"public_key_pem": public_key_path.read_text(encoding="utf-8")})
+        global _PUBLIC_KEY_CACHE
+        try:
+            # Use cached key first (for Vercel ephemeral storage)
+            if _PUBLIC_KEY_CACHE:
+                return jsonify({"public_key_pem": _PUBLIC_KEY_CACHE})
+            
+            if not public_key_path.exists():
+                return jsonify({"error": "Public key not found. Environment variables may not be set."}), 500
+            key_content = public_key_path.read_text(encoding="utf-8")
+            if not key_content:
+                return jsonify({"error": "Public key is empty."}), 500
+            _PUBLIC_KEY_CACHE = key_content
+            return jsonify({"public_key_pem": key_content})
+        except Exception as e:
+            logging.error(f"Error loading public key: {e}")
+            return jsonify({"error": f"Failed to load public key: {str(e)}"}), 500
 
     @app.post("/api/v1/submit")
     @maybe_limit
