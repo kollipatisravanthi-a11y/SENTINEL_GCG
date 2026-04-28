@@ -137,7 +137,8 @@ class ReportStore:
 
     def _connect(self) -> Any:
         if self.url and libsql_client:
-            return libsql_client.connect(self.url, auth_token=self.token)
+            # use a simple client for synchronous environments
+            return libsql_client.create_client_sync(self.url, auth_token=self.token)
 
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
