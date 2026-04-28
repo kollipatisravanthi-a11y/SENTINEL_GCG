@@ -1,12 +1,15 @@
-"""SQLite storage layer for encrypted reports."""
+"""SQLite (local) or LibSQL (Turso) storage layer."""
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Any
+
+import libsql_client
 
 
 @dataclass(frozen=True)
@@ -22,7 +25,11 @@ class ReportRecord:
 class ReportStore:
     def __init__(self, db_path: Path | str):
         self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.url = os.getenv("TURSO_DATABASE_URL")
+        self.token = os.getenv("TURSO_AUTH_TOKEN")
+
+        if not self.url:
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
     def initialize(self) -> None:
         with self._connect() as conn:
@@ -54,6 +61,10 @@ class ReportStore:
             merkle_index = self.count_reports(conn)
             submitted_at = int(time.time())
             route_text = " -> ".join(route_path)
+
+            # Convert to bytes for blobs in Turso/libsql
+            blob_data = encrypted_blob
+
             conn.execute(
                 """
                 INSERT INTO reports (
@@ -68,7 +79,7 @@ class ReportStore:
                 """,
                 (
                     report_id,
-                    sqlite3.Binary(encrypted_blob),
+                    blob_data,
                     merkle_index,
                     submitted_at,
                     node_id,
@@ -86,25 +97,27 @@ class ReportStore:
 
     def get_report(self, report_id: str) -> ReportRecord | None:
         with self._connect() as conn:
-            row = conn.execute(
+            res = conn.execute(
                 """
                 SELECT report_id, encrypted_blob, merkle_index, submitted_at, node_id, route_path
                 FROM reports
                 WHERE report_id = ?
                 """,
                 (report_id,),
-            ).fetchone()
+            )
+            row = res.fetchone()
         return self._row_to_record(row) if row else None
 
     def list_reports(self) -> list[ReportRecord]:
         with self._connect() as conn:
-            rows = conn.execute(
+            res = conn.execute(
                 """
                 SELECT report_id, encrypted_blob, merkle_index, submitted_at, node_id, route_path
                 FROM reports
                 ORDER BY merkle_index ASC
                 """
-            ).fetchall()
+            )
+            rows = res.fetchall()
         return [self._row_to_record(row) for row in rows]
 
     def leaf_hashes(self) -> list[str]:
@@ -112,25 +125,31 @@ class ReportStore:
 
         return [hash_leaf(report.encrypted_blob) for report in self.list_reports()]
 
-    def count_reports(self, conn: sqlite3.Connection | None = None) -> int:
+    def count_reports(self, conn: Any | None = None) -> int:
         if conn is None:
             with self._connect() as own_conn:
                 return self.count_reports(own_conn)
-        return int(conn.execute("SELECT COUNT(*) FROM reports").fetchone()[0])
+        res = conn.execute("SELECT COUNT(*) FROM reports")
+        return int(res.fetchone()[0])
 
-    def _connect(self) -> sqlite3.Connection:
+    def _connect(self) -> Any:
+        if self.url:
+            return libsql_client.connect(self.url, auth_token=self.token)
+
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         return conn
 
     @staticmethod
-    def _row_to_record(row: sqlite3.Row) -> ReportRecord:
+    def _row_to_record(row: Any) -> ReportRecord:
+        # libsql uses index-based or key-based access depending on the row object
+        # but the client usually provides a row wrapper that handles both.
         return ReportRecord(
-            report_id=row["report_id"],
-            encrypted_blob=bytes(row["encrypted_blob"]),
-            merkle_index=int(row["merkle_index"]),
-            submitted_at=int(row["submitted_at"]),
-            node_id=row["node_id"],
-            route_path=row["route_path"],
+            report_id=row[0] if isinstance(row, tuple) else row["report_id"],
+            encrypted_blob=bytes(row[1] if isinstance(row, tuple) else row["encrypted_blob"]),
+            merkle_index=int(row[2] if isinstance(row, tuple) else row["merkle_index"]),
+            submitted_at=int(row[3] if isinstance(row, tuple) else row["submitted_at"]),
+            node_id=row[4] if isinstance(row, tuple) else row["node_id"],
+            route_path=row[5] if isinstance(row, tuple) else row["route_path"],
         )
 
