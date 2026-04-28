@@ -312,6 +312,16 @@
         statusEl.className = `status ${type}`.trim();
       }
 
+      async function readJsonOrThrow(response, fallbackMessage) {
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          return await response.json();
+        }
+        const text = await response.text();
+        const head = text.slice(0, 160).replace(/\s+/g, " ").trim();
+        throw new Error(`${fallbackMessage} (non-JSON response: ${head || "<empty>"})`);
+      }
+
       async function buildPayload() {
         const file = document.querySelector("#attachment").files[0];
         let attachment = null;
@@ -347,7 +357,11 @@
           if (!keyResponse.ok) {
             throw new Error("Could not load public key");
           }
-          const { public_key_pem: publicKeyPem } = await keyResponse.json();
+          const keyData = await readJsonOrThrow(keyResponse, "Could not load public key");
+          const publicKeyPem = keyData.public_key_pem;
+          if (!publicKeyPem) {
+            throw new Error("Public key response missing key data");
+          }
           const payload = await buildPayload();
           const encrypted = await SentinelCrypto.encryptPayload(payload, publicKeyPem);
 
@@ -357,7 +371,7 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(encrypted),
           });
-          const result = await response.json();
+          const result = await readJsonOrThrow(response, "Submission failed");
           if (!response.ok) {
             throw new Error(result.error || "Submission failed");
           }
