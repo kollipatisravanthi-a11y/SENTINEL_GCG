@@ -75,25 +75,38 @@ def initialize_keys():
     """Initialize RSA keys - generate if they don't exist."""
     global _CACHED_PUBLIC_KEY, _CACHED_PRIVATE_KEY_PATH
     
-    # If key is already cached, no need to re-initialize
-    if _CACHED_PUBLIC_KEY and _CACHED_PRIVATE_KEY_PATH:
-        return _CACHED_PRIVATE_KEY_PATH, Path(config.SERVER_PUBLIC_KEY_PATH)
-
     private_key_path = Path(config.SERVER_PRIVATE_KEY_PATH)
     public_key_path = Path(config.SERVER_PUBLIC_KEY_PATH)
     
+    logging.info(f"Key initialization started. Private key path: {private_key_path}")
+
+    # If key is already cached, no need to re-initialize
+    if _CACHED_PUBLIC_KEY:
+        logging.info("Public key already in cache.")
+        return _CACHED_PRIVATE_KEY_PATH, public_key_path
+
     # Ensure the directory exists
-    private_key_path.parent.mkdir(parents=True, exist_ok=True)
+    key_dir = private_key_path.parent
+    logging.info(f"Ensuring key directory exists: {key_dir}")
+    key_dir.mkdir(parents=True, exist_ok=True)
     
     # Generate keys if they don't exist
-    ensure_key_pair(private_key_path, public_key_path)
-    
+    if not private_key_path.exists():
+        logging.info("Private key not found. Generating new key pair.")
+        ensure_key_pair(private_key_path, public_key_path)
+    else:
+        logging.info("Private key already exists.")
+
     # Cache public key in memory for faster access
     if public_key_path.exists():
+        logging.info("Public key file found. Reading and caching.")
         _CACHED_PUBLIC_KEY = public_key_path.read_text(encoding="utf-8")
+        if not _CACHED_PUBLIC_KEY:
+            logging.error("CRITICAL: Public key file is empty after read.")
+            raise RuntimeError("Public key file is empty.")
         logging.info("RSA keys initialized and cached successfully")
     else:
-        logging.error("Failed to find or create RSA keys")
+        logging.error(f"CRITICAL: Public key file not found at {public_key_path} after generation attempt.")
         raise RuntimeError("Could not create or find RSA keys")
     
     _CACHED_PRIVATE_KEY_PATH = private_key_path
