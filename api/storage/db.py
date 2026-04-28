@@ -9,7 +9,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Any
 
-import libsql_client
+try:
+    import libsql_client
+except ImportError:
+    libsql_client = None
 
 
 @dataclass(frozen=True)
