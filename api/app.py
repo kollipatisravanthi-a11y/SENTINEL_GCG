@@ -50,21 +50,7 @@ except ImportError:  # pragma: no cover - dependency is optional at import time
 
 
 REPORT_ID_RE = re.compile(r"^[0-9a-f]{64}$")
-BASE_DIR_RESOLVED = Path(__file__).resolve().parent.parent
-WEB_DIR = BASE_DIR_RESOLVED / "public"
-
-# Fallback to config.BASE_DIR if not found
-if not WEB_DIR.exists():
-    WEB_DIR = config.BASE_DIR / "public"
-    
-logging.info(f"Using WEB_DIR: {WEB_DIR}")
-logging.info(f"WEB_DIR exists: {WEB_DIR.exists()}")
-
-# Verify that public files exist
-if not WEB_DIR.exists():
-    logging.warning(f"Public directory not found at {WEB_DIR}")
-    # Create a minimal fallback
-    WEB_DIR.mkdir(parents=True, exist_ok=True)
+WEB_DIR = Path(__file__).resolve().parent.parent / "public"
 
 # Global cache for keys
 _CACHED_PRIVATE_KEY_PEM = None
