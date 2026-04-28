@@ -2,6 +2,7 @@
 
 import logging
 import sys
+import traceback
 from pathlib import Path
 
 # Ensure the parent directory is in the path for imports
@@ -18,18 +19,39 @@ logger.info("Initializing SENTINEL app for Vercel...")
 
 # Initialize app variable before trying to create the real app
 app = None
+init_error = None
 
 try:
     from api.app import create_app
     app = create_app()
     logger.info("✓ SENTINEL app initialized successfully")
 except Exception as e:
-    logger.error(f"Failed to initialize SENTINEL app: {e}", exc_info=True)
+    init_error = str(e)
+    tb = traceback.format_exc()
+    logger.error(f"Failed to initialize SENTINEL app: {e}")
+    logger.error(f"Traceback: {tb}")
+    
     # Create a fallback app to prevent startup errors
     app = Flask(__name__)
     
     @app.route('/')
-    def error():
-        return jsonify({"error": f"Failed to initialize app: {str(e)}"}), 500
+    def root():
+        return jsonify({
+            "status": "initialization_failed",
+            "error": init_error,
+            "message": "SENTINEL app initialization failed. Check logs for details."
+        }), 503
+    
+    @app.route('/health')
+    def health():
+        return jsonify({"status": "error", "error": init_error}), 503
+    
+    @app.route('/<path:path>')
+    def catch_all(path):
+        return jsonify({
+            "status": "initialization_failed",
+            "error": init_error,
+            "requested_path": path
+        }), 503
     
     logger.info("Created fallback error app")
