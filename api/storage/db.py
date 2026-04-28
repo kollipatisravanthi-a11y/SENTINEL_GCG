@@ -137,8 +137,9 @@ class ReportStore:
 
     def _connect(self) -> Any:
         if self.url and libsql_client:
-            # use a simple client for synchronous environments
-            return libsql_client.create_client_sync(self.url, auth_token=self.token)
+            # Convert libsql:// to https:// for Vercel/Serverless stability
+            http_url = self.url.replace("libsql://", "https://")
+            return libsql_client.create_client_sync(http_url, auth_token=self.token)
 
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
