@@ -610,49 +610,6 @@
         }
       }
 
-      async function openReport(reportId) {
-        setStatus("Decrypting complaint...");
-        try {
-          const response = await fetch("/api/v1/admin/decrypt", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Admin-Token": token(),
-            },
-            body: JSON.stringify({ report_id: reportId, include_attachment_data: true }),
-          });
-          const data = await response.json();
-          if (!response.ok) {
-            throw new Error(data.error || "Could not decrypt complaint");
-          }
-
-          const report = reports.find((item) => item.report_id === reportId);
-          detailIdEl.textContent = data.report_id;
-          detailStatusEl.innerHTML = statusPill(data.integrity.status);
-          detailIndexEl.textContent = data.integrity.merkle_index;
-          detailRouteEl.textContent = report ? report.route_path : "-";
-          detailTitleEl.textContent = data.payload.title || "Untitled complaint";
-          detailBodyEl.textContent = data.payload.body || "";
-
-          const attachment = data.payload.attachment;
-          attachmentEl.hidden = !attachment;
-          attachmentPreviewArea.hidden = true;
-          if (attachment) {
-            attachmentNameEl.textContent = attachment.name || "-";
-            attachmentTypeEl.textContent = attachment.type || "-";
-            attachmentSizeEl.textContent = attachment.size ? `${attachment.size} bytes` : "-";
-            attachmentShaEl.textContent = attachment.sha256 || "-";
-            currentAttachment = attachment;
-          } else {
-            currentAttachment = null;
-          }
-
-          setStatus("Complaint opened.", "ok");
-        } catch (error) {
-          setStatus(error.message, "error");
-        }
-      }
-
       function downloadAttachment() {
         if (!currentAttachment || !currentAttachment.data_base64) {
           setStatus("No attachment data available.", "error");
