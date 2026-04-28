@@ -66,59 +66,40 @@ if not WEB_DIR.exists():
     # Create a minimal fallback
     WEB_DIR.mkdir(parents=True, exist_ok=True)
 
-# Global cache for keys (for Vercel's ephemeral filesystem)
-_CACHED_PUBLIC_KEY = None
-_CACHED_PRIVATE_KEY_PATH = None
+# Global cache for keys
+_CACHED_PRIVATE_KEY_PEM = None
+_CACHED_PUBLIC_KEY_PEM = None
 
 
 def initialize_keys():
-    """Initialize RSA keys - generate if they don't exist."""
-    global _CACHED_PUBLIC_KEY, _CACHED_PRIVATE_KEY_PATH
-    
-    private_key_path = Path(config.SERVER_PRIVATE_KEY_PATH)
-    public_key_path = Path(config.SERVER_PUBLIC_KEY_PATH)
-    
-    logging.info(f"Key initialization started. Private key path: {private_key_path}")
+    """Generate and cache a single RSA key pair for the application instance."""
+    global _CACHED_PRIVATE_KEY_PEM, _CACHED_PUBLIC_KEY_PEM
 
-    # If key is already cached, no need to re-initialize
-    if _CACHED_PUBLIC_KEY:
-        logging.info("Public key already in cache.")
-        return _CACHED_PRIVATE_KEY_PATH, public_key_path
+    if _CACHED_PUBLIC_KEY_PEM and _CACHED_PRIVATE_KEY_PEM:
+        logging.info("RSA key pair already cached.")
+        return
 
-    # Ensure the directory exists
-    key_dir = private_key_path.parent
-    logging.info(f"Ensuring key directory exists: {key_dir}")
-    key_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Generate keys if they don't exist
-    if not private_key_path.exists():
-        logging.info("Private key not found. Generating new key pair.")
-        ensure_key_pair(private_key_path, public_key_path)
-    else:
-        logging.info("Private key already exists.")
+    logging.info("Generating new RSA key pair for this instance.")
+    from .crypto.rsa_engine import (
+        generate_private_key,
+        serialize_private_key,
+        serialize_public_key,
+    )
 
-    # Cache public key in memory for faster access
-    if public_key_path.exists():
-        logging.info("Public key file found. Reading and caching.")
-        _CACHED_PUBLIC_KEY = public_key_path.read_text(encoding="utf-8")
-        if not _CACHED_PUBLIC_KEY:
-            logging.error("CRITICAL: Public key file is empty after read.")
-            raise RuntimeError("Public key file is empty.")
-        logging.info("RSA keys initialized and cached successfully")
-    else:
-        logging.error(f"CRITICAL: Public key file not found at {public_key_path} after generation attempt.")
-        raise RuntimeError("Could not create or find RSA keys")
-    
-    _CACHED_PRIVATE_KEY_PATH = private_key_path
-    return private_key_path, public_key_path
+    private_key = generate_private_key()
+    public_key = private_key.public_key()
+
+    _CACHED_PRIVATE_KEY_PEM = serialize_private_key(private_key).decode("utf-8")
+    _CACHED_PUBLIC_KEY_PEM = serialize_public_key(public_key).decode("utf-8")
+    logging.info("RSA key pair generated and cached successfully.")
 
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(__name__)
     app.config.update(
         DATABASE_PATH=config.DATABASE_PATH,
-        SERVER_PRIVATE_KEY_PATH=config.SERVER_PRIVATE_KEY_PATH,
-        SERVER_PUBLIC_KEY_PATH=config.SERVER_PUBLIC_KEY_PATH,
+        SERVER_PRIVATE_KEY=config.SERVER_PRIVATE_KEY,
+        SERVER_PUBLIC_KEY=config.SERVER_PUBLIC_KEY,
         HMAC_SECRET=config.HMAC_SECRET,
         ADMIN_TOKEN=config.ADMIN_TOKEN,
         NODE_ID=config.NODE_ID,
@@ -130,9 +111,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         app.config.update(test_config)
 
     try:
-        private_key_path, public_key_path = initialize_keys()
+        initialize_keys()
     except Exception as e:
-        logging.error(f"Failed to initialize keys: {e}")
+        logging.error(f"Failed to initialize keys: {e}", exc_info=True)
         raise
 
     store = ReportStore(app.config["DATABASE_PATH"])
@@ -194,30 +175,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.get("/api/v1/public-key")
     def public_key():
-        global _CACHED_PUBLIC_KEY
-        try:
-            # Use cached key first
-            if _CACHED_PUBLIC_KEY:
-                return jsonify({"public_key_pem": _CACHED_PUBLIC_KEY})
-
-            # If not cached, try to initialize
-            _, public_key_path = initialize_keys()
-            
-            if not public_key_path.exists():
-                msg = "Public key not found after initialization."
-                logging.error(msg)
-                return jsonify({"error": msg}), 500
-            
-            key_content = public_key_path.read_text(encoding="utf-8")
-            if not key_content:
-                logging.error("Public key file is empty after initialization")
-                return jsonify({"error": "Public key is empty"}), 500
-            
-            _CACHED_PUBLIC_KEY = key_content
-            return jsonify({"public_key_pem": key_content})
-        except Exception as e:
-            logging.error(f"Error loading public key: {e}", exc_info=True)
-            return jsonify({"error": f"Failed to load public key: {str(e)}"}), 500
+        if not _CACHED_PUBLIC_KEY_PEM:
+            logging.error("Public key not cached.")
+            return jsonify({"error": "Public key is not available"}), 503
+        return jsonify({"public_key_pem": _CACHED_PUBLIC_KEY_PEM})
 
     @app.post("/api/v1/submit")
     @maybe_limit
@@ -362,7 +323,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         try:
             envelope = parse_blob(report.encrypted_blob)
-            private_key = load_private_key(private_key_path)
+            private_key = load_private_key(_CACHED_PRIVATE_KEY_PEM)
             aes_key = unwrap_key(private_key, envelope.encrypted_key)
             plaintext = decrypt_payload(
                 envelope.ciphertext,

@@ -42,15 +42,15 @@ def ensure_key_pair(private_path: Path, public_path: Path) -> None:
     public_path.write_bytes(serialize_public_key(private_key.public_key()))
 
 
-def load_private_key(path: Path) -> RSAPrivateKey:
-    key = serialization.load_pem_private_key(path.read_bytes(), password=None)
+def load_private_key(pem_string: str) -> RSAPrivateKey:
+    key = serialization.load_pem_private_key(pem_string.encode(), password=None)
     if not isinstance(key, RSAPrivateKey):
         raise TypeError("Expected an RSA private key")
     return key
 
 
-def load_public_key(path: Path) -> RSAPublicKey:
-    key = serialization.load_pem_public_key(path.read_bytes())
+def load_public_key(pem_string: str) -> RSAPublicKey:
+    key = serialization.load_pem_public_key(pem_string.encode())
     if not isinstance(key, RSAPublicKey):
         raise TypeError("Expected an RSA public key")
     return key

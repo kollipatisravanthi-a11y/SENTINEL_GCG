@@ -23,12 +23,8 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 DATABASE_PATH = Path(os.getenv("SENTINEL_DB", DATA_DIR / "sentinel.db"))
 
 # RSA key paths - keys will be auto-generated if they don't exist
-SERVER_PRIVATE_KEY_PATH = Path(
-    os.getenv("SENTINEL_PRIVATE_KEY", DATA_DIR / "server_private_key.pem")
-)
-SERVER_PUBLIC_KEY_PATH = Path(
-    os.getenv("SENTINEL_PUBLIC_KEY", DATA_DIR / "server_public_key.pem")
-)
+SERVER_PRIVATE_KEY = os.getenv("SENTINEL_PRIVATE_KEY")
+SERVER_PUBLIC_KEY = os.getenv("SENTINEL_PUBLIC_KEY")
 
 NODE_ID = os.getenv("SENTINEL_NODE_ID", "storage_primary")
 ENTRY_NODE = os.getenv("SENTINEL_ENTRY_NODE", "entry_gateway")
