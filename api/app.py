@@ -137,19 +137,43 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.get("/")
     def index_page():
-        return send_from_directory(WEB_DIR, "index.html")
+        try:
+            return send_from_directory(WEB_DIR, "index.html")
+        except Exception as e:
+            logging.warning(f"Could not serve index.html: {e}")
+            return jsonify({
+                "status": "ok",
+                "message": "SENTINEL API is running",
+                "endpoints": {
+                    "verify": "/verify",
+                    "admin": "/admin",
+                    "api": "/api/v1/public-key",
+                }
+            }), 200
 
     @app.get("/verify")
     def verify_page():
-        return send_from_directory(WEB_DIR, "verify.html")
+        try:
+            return send_from_directory(WEB_DIR, "verify.html")
+        except Exception as e:
+            logging.warning(f"Could not serve verify.html: {e}")
+            return jsonify({"error": "verify.html not found"}), 404
 
     @app.get("/admin")
     def admin_page():
-        return send_from_directory(WEB_DIR, "admin.html")
+        try:
+            return send_from_directory(WEB_DIR, "admin.html")
+        except Exception as e:
+            logging.warning(f"Could not serve admin.html: {e}")
+            return jsonify({"error": "admin.html not found"}), 404
 
     @app.get("/crypto.js")
     def crypto_js():
-        return send_from_directory(WEB_DIR, "crypto.js")
+        try:
+            return send_from_directory(WEB_DIR, "crypto.js")
+        except Exception as e:
+            logging.warning(f"Could not serve crypto.js: {e}")
+            return jsonify({"error": "crypto.js not found"}), 404
 
     @app.get("/api/v1/public-key")
     def public_key():
