@@ -75,6 +75,10 @@ def initialize_keys():
     """Initialize RSA keys - generate if they don't exist."""
     global _CACHED_PUBLIC_KEY, _CACHED_PRIVATE_KEY_PATH
     
+    # If key is already cached, no need to re-initialize
+    if _CACHED_PUBLIC_KEY and _CACHED_PRIVATE_KEY_PATH:
+        return _CACHED_PRIVATE_KEY_PATH, Path(config.SERVER_PUBLIC_KEY_PATH)
+
     private_key_path = Path(config.SERVER_PRIVATE_KEY_PATH)
     public_key_path = Path(config.SERVER_PUBLIC_KEY_PATH)
     
@@ -87,10 +91,10 @@ def initialize_keys():
     # Cache public key in memory for faster access
     if public_key_path.exists():
         _CACHED_PUBLIC_KEY = public_key_path.read_text(encoding="utf-8")
-        logging.info("RSA keys initialized successfully")
+        logging.info("RSA keys initialized and cached successfully")
     else:
-        logging.error("Failed to initialize RSA keys")
-        raise RuntimeError("Could not create RSA keys")
+        logging.error("Failed to find or create RSA keys")
+        raise RuntimeError("Could not create or find RSA keys")
     
     _CACHED_PRIVATE_KEY_PATH = private_key_path
     return private_key_path, public_key_path
@@ -179,18 +183,21 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def public_key():
         global _CACHED_PUBLIC_KEY
         try:
-            # Use cached key first (for Vercel ephemeral storage)
+            # Use cached key first
             if _CACHED_PUBLIC_KEY:
                 return jsonify({"public_key_pem": _CACHED_PUBLIC_KEY})
+
+            # If not cached, try to initialize
+            _, public_key_path = initialize_keys()
             
             if not public_key_path.exists():
-                msg = "Public key not found. Make sure environment variables are set."
+                msg = "Public key not found after initialization."
                 logging.error(msg)
                 return jsonify({"error": msg}), 500
             
             key_content = public_key_path.read_text(encoding="utf-8")
             if not key_content:
-                logging.error("Public key file is empty")
+                logging.error("Public key file is empty after initialization")
                 return jsonify({"error": "Public key is empty"}), 500
             
             _CACHED_PUBLIC_KEY = key_content
