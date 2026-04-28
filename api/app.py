@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from flask import Flask, jsonify, request, send_from_directory
+from werkzeug.exceptions import HTTPException
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -82,6 +83,24 @@ def initialize_keys():
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(__name__)
+
+    @app.errorhandler(Exception)
+    def handle_api_exception(exc: Exception):
+        # Let Flask handle HTTP exceptions (e.g. 404/400) normally.
+        if isinstance(exc, HTTPException):
+            return exc
+
+        # For API paths, always respond with JSON to avoid the frontend
+        # failing JSON.parse on an HTML error page.
+        if request.path.startswith("/api/"):
+            logging.exception("Unhandled exception on %s", request.path)
+            return (
+                jsonify({"error": str(exc), "type": exc.__class__.__name__}),
+                500,
+            )
+
+        # Non-API: re-raise so default handlers apply.
+        raise exc
 
     # Force key initialization within the application context immediately
     with app.app_context():
