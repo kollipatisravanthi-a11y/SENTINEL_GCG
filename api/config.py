@@ -18,7 +18,11 @@ else:
     # Local development - use project directory
     DATA_DIR = BASE_DIR / "data"
 
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+# Ensure DATA_DIR exists, but don't fail if we're in a limited environment
+try:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
 
 DATABASE_PATH = Path(os.getenv("SENTINEL_DB", DATA_DIR / "sentinel.db"))
 
