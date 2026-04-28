@@ -96,6 +96,16 @@ def initialize_keys():
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(__name__)
+
+    # Force key initialization within the application context immediately
+    with app.app_context():
+        try:
+            initialize_keys()
+        except Exception as e:
+            logging.critical(f"FATAL: Key initialization failed: {e}", exc_info=True)
+            # If keys fail, the app is non-functional. We can raise to stop startup.
+            raise RuntimeError("Could not initialize keys for the application") from e
+
     app.config.update(
         DATABASE_PATH=config.DATABASE_PATH,
         SERVER_PRIVATE_KEY=config.SERVER_PRIVATE_KEY,
@@ -109,12 +119,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     )
     if test_config:
         app.config.update(test_config)
-
-    try:
-        initialize_keys()
-    except Exception as e:
-        logging.error(f"Failed to initialize keys: {e}", exc_info=True)
-        raise
 
     store = ReportStore(app.config["DATABASE_PATH"])
     store.initialize()
