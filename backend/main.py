@@ -291,6 +291,7 @@ async def verify_complaint(complaint_id: int):
 
     actually_tampered = [nid for nid, is_tampered in chain_results if is_tampered]
     out_of_sync = [nid for nid, is_tampered in chain_results if not is_tampered]
+    tamper_detected = len(actually_tampered) > 0
 
     tamper_detected = len(actually_tampered) > 0
 
