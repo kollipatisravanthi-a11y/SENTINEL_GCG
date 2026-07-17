@@ -1,149 +1,88 @@
-## Sentinel
+# SENTINEL
 
-**Sentinel** is a full-stack application consisting of a **FastAPI** backend and a **React.js** frontend. It is designed to manage and control distributed nodes, handle complaints, detect tampering, and maintain a transparent public ledger.
+SENTINEL is a distributed complaint-management platform. It combines a FastAPI backend, a React dashboard, and independent node servers to record complaints, track their status, and detect tampering through hash and chain verification.
 
----
+## Features
 
-## 📂 Project Structure
+- Submit and track complaints
+- Store complaint records in a tamper-evident chain
+- Monitor distributed NGO, media, ombudsman, and public nodes
+- Verify node consistency and identify tampered or out-of-sync records
+- View a transparent public ledger
+- Remove file metadata before processing uploads
+
+## Project structure
 
 ```text
-Sentinel/
-│
-├── backend/
-│   ├── main.py                 # Backend entry point
-│   ├── chain.py                # Blockchain logic
-│   ├── database.py             # Database operations
-│   ├── models.py               # Data models
-│   ├── nodes/
-│   │   └── node_server.py      # Node server logic
-│   └── utils/
-│       ├── hasher.py           # Hashing utilities
-│       └── metadata_stripper.py# Metadata removal utilities
-│
-├── frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── Dashboard
-│   │   ├── NodeControl
-│   │   ├── NodePanel
-│   │   ├── PublicLedger
-│   │   ├── SubmitComplaint
-│   │   ├── TamperAlert
-│   │   └── TrackComplaint
-│   ├── package.json
-│   └── package-lock.json
-│
-├── requirements.txt
-├── start_backend.bat
-└── FILESTRUCTURE.txt
+backend/             FastAPI application, chain logic, database, and node server
+frontend/            React dashboard
+tamper_evidence.py   Interactive utility for demonstrating node tampering
+start_backend.bat    Windows backend startup script
+requirements.txt     Python dependencies
 ```
 
----
+## Requirements
 
-## 🚀 Features
+- Python 3.10 or later
+- Node.js and npm
 
-- 🔗 Blockchain-powered complaint storage
-- 🌐 Distributed node management
-- 📋 Complaint submission and tracking
-- 🚨 Real-time tamper detection and alerts
-- 📖 Transparent public ledger
-- ⚡ FastAPI REST API backend
-- 💻 Interactive React dashboard
-- 🔒 Secure hashing and metadata stripping utilities
+## Run the backend
 
----
-
-## 🛠️ Tech Stack
-
-### Backend
-- FastAPI
-- Uvicorn
-- Pydantic
-- HTTPX
-- Python
-
-### Frontend
-- React.js
-- JavaScript
-- HTML
-- CSS
-
----
-
-## 📦 Backend Requirements
-
-Install the required Python packages:
+Install the Python dependencies from the repository root:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-**requirements.txt**
+On Windows, start the backend with:
 
-- fastapi >= 0.95.0
-- uvicorn >= 0.20.0
-- httpx >= 0.23.0
-- pydantic >= 1.10.0
-- python-multipart >= 0.0.5
-- Pillow >= 9.0.0
-- pypdf >= 3.0.0
-- mutagen >= 1.46.0
-
----
-
-## ▶️ Running the Backend
-
-### Windows
-
-```bash
+```bat
 start_backend.bat
 ```
 
-### Or start manually
+Or run the main API manually:
 
 ```bash
 uvicorn backend.main:app --reload
 ```
 
----
+The main API runs at `http://localhost:8000` by default.
 
-## ▶️ Running the Frontend
-
-Navigate to the frontend folder:
+## Run the frontend
 
 ```bash
 cd frontend
-```
-
-Install dependencies:
-
-```bash
 npm install
-```
-
-Start the React development server:
-
-```bash
 npm start
 ```
 
----
+The React development server uses the backend API at `http://localhost:8000`.
 
-## 📌 Modules
+## Tamper-detection demo
 
-### Backend
-- **main.py** – FastAPI application entry point
-- **chain.py** – Blockchain implementation
-- **database.py** – Database interactions
-- **models.py** – Data models
-- **nodes/node_server.py** – Node management server
-- **utils/** – Hashing and metadata stripping utilities
+With the main server and node servers running, use the included demo utility to tamper a selected complaint on one node and inspect that node's chain verification result:
 
-### Frontend
-- **Dashboard** – Main dashboard
-- **NodeControl** – Node management interface
-- **NodePanel** – Node monitoring
-- **PublicLedger** – Blockchain ledger viewer
-- **SubmitComplaint** – Complaint submission
-- **TrackComplaint** – Complaint status tracking
-- **TamperAlert** – Tamper detection dashboard
+```bash
+python tamper_evidence.py
+```
+
+You can also run it non-interactively:
+
+```bash
+python tamper_evidence.py --node NGO --complaint 1 --yes
+```
+
+Available nodes are `NGO`, `MEDIA`, `OMBUDSMAN`, and `PUBLIC`.
+
+## Tech stack
+
+**Backend:** FastAPI, Uvicorn, Pydantic, HTTPX, SQLite, and Python  
+**Frontend:** React, JavaScript, HTML, and CSS
+
+## Main components
+
+- `backend/main.py` — API endpoints and verification workflow
+- `backend/chain.py` — hash-chain logic
+- `backend/database.py` — database operations
+- `backend/nodes/node_server.py` — distributed node server
+- `backend/utils/` — hashing and metadata-removal utilities
